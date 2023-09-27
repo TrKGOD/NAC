@@ -1,125 +1,124 @@
-import socket
-import datetime
+import os
 
-# Dicionário para armazenar a whitelist de IPs e MAC Addresses
-whitelist = {}
+# Função para aplicar configurações SSH
+def apply_ssh_settings(settings):
+    try:
+        # Abrir o arquivo de configuração SSH para escrita
+        with open('/etc/ssh/sshd_config', 'a') as ssh_config_file:
+            for setting in settings:
+                ssh_config_file.write(setting + '\n')
 
-# Dicionário para armazenar o registro de tentativas por IP
-connection_attempts = {}
+        # Reiniciar o serviço SSH para aplicar as configurações
+        os.system('sudo systemctl restart ssh')
 
-# Conjunto para armazenar IPs bloqueados
-blocked_ips = set()
+        print('Configurações do SSH aplicadas com sucesso.')
 
-# Dicionário para armazenar o redirecionamento de portas
-port_forwarding = {}
+    except Exception as e:
+        print('Erro ao aplicar as configurações:', str(e))
 
-# Função para registrar tentativa de conexão
-def log_connection_attempt(ip):
-    if ip in connection_attempts:
-        connection_attempts[ip] += 1
-    else:
-        connection_attempts[ip] = 1
+# Função para visualizar o arquivo de configuração SSH
+def view_ssh_config():
+    try:
+        with open('/etc/ssh/sshd_config', 'r') as ssh_config_file:
+            return ssh_config_file.read()
 
-# Função para verificar se um IP deve ser bloqueado
-def should_block_ip(ip):
-    if ip in connection_attempts and connection_attempts[ip] >= 5:
-        return True
-    return False
+    except Exception as e:
+        return f'Erro ao visualizar as configurações: {str(e)}'
 
-# Função para adicionar IPs e MAC Addresses à whitelist
-def add_to_whitelist(ip, mac):
-    whitelist[ip] = mac
-
-# Função para visualizar os logs de tentativas de conexão
-def view_connection_logs():
-    for ip, attempts in connection_attempts.items():
-        print(f"IP: {ip}, Tentativas: {attempts}")
-
-# Função para visualizar IPs bloqueados
-def view_blocked_ips():
-    for ip in blocked_ips:
-        print(f"IP Bloqueado: {ip}")
-
-# Função para desbloquear um IP
-def unblock_ip(ip):
-    if ip in blocked_ips:
-        blocked_ips.remove(ip)
-        print(f"IP {ip} desbloqueado com sucesso.")
-
-# Função para configurar o redirecionamento de portas
-def configure_port_forwarding(ip, source_port, dest_port):
-    port_forwarding[(ip, source_port)] = dest_port
-    print(f"Porta {source_port} redirecionada para {ip}:{dest_port}.")
-
-# Função para gerar um alerta de exemplo
-def generate_example_alert():
-    example_ip = "192.168.1.100"
-    example_mac = "00:1A:2B:3C:4D:5E"
+# Função para configurar a lista de IPs
+def configure_ip_list(ip_type):
+    ip_list = []
+    while True:
+        ip = input(f'Digite um endereço IP para a lista de {ip_type} (ou "q" para sair): ')
+        if ip.lower() == 'q':
+            break
+        ip_list.append(ip)
     
-    current_time = datetime.datetime.now()
-    
-    print("Alerta de Exemplo:")
-    print(f"Horário: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"IP: {example_ip}")
-    print(f"MAC Address: {example_mac}")
-    
-    log_connection_attempt(example_ip)  # Registrar tentativa fictícia
-    blocked_ips.add(example_ip)  # Bloquear o IP de exemplo
-    print(f"Tentativa de Conexão: {connection_attempts[example_ip]}")
-    print(f"IP Bloqueado: {example_ip}")
+    return ip_list
 
-# Registrar uma tentativa de login falha com um IP bloqueado por padrão
-default_ip = "192.168.1.200"
-log_connection_attempt(default_ip)
-blocked_ips.add(default_ip)
+# Função para iniciar o serviço SSH
+def start_ssh_service():
+    os.system('sudo systemctl start ssh')
+    print('Serviço SSH iniciado.')
+
+# Função para reiniciar o serviço SSH
+def restart_ssh_service():
+    os.system('sudo systemctl restart ssh')
+    print('Serviço SSH reiniciado.')
+
+# Função para parar o serviço SSH
+def stop_ssh_service():
+    os.system('sudo systemctl stop ssh')
+    print('Serviço SSH parado.')
 
 # Menu principal
 while True:
     print("\nMenu Principal:")
-    print("-" * 20)
-    print("1. Adicionar IP/MAC à whitelist")
-    print("2. Visualizar IPs na whitelist")
-    print("3. Visualizar logs de tentativas de conexão")
-    print("4. Visualizar IPs bloqueados")
-    print("5. Desbloquear um IP")
-    print("6. Configurar Port Forwarding")
-    print("7. Alertas")
-    print("8. Sair")
-    print("-" * 20)
+    print("1. Configurar IP Whitelist")
+    print("2. Mostrar Lista de IPs permitidos")
+    print("3. Configurar IP Blacklist")
+    print("4. Mostrar Lista de IPs não permitidos")
+    print("5. Configurar Portas")
+    print("6. Configurar Alertas")
+    print("7. Configurar Logs de Acesso")
+    print("8. Visualizar configurações SSH")
+    print("9. Iniciar serviço SSH")
+    print("10. Reiniciar serviço SSH")
+    print("11. Parar serviço SSH")
+    print("0. Sair do programa")
 
     choice = input("Escolha uma opção: ")
 
     if choice == '1':
-        ip = input("Digite o IP: ")
-        mac = input("Digite o MAC Address: ")
-        add_to_whitelist(ip, mac)
-        print(f"IP {ip} e MAC {mac} adicionados à whitelist.")
+        ip_whitelist = configure_ip_list("Whitelist")
+        settings = [f"AllowUsers {','.join(ip_whitelist)}"]
+        apply_ssh_settings(settings)
 
     elif choice == '2':
-        print("\nIPs na Whitelist:")
-        for ip, mac in whitelist.items():
-            print(f"IP: {ip}, MAC: {mac}")
+        print("Lista de IPs permitidos:")
+        ssh_config = view_ssh_config()
+        print("\n".join(line for line in ssh_config.split("\n") if "AllowUsers" in line))
 
     elif choice == '3':
-        view_connection_logs()
+        ip_blacklist = configure_ip_list("Blacklist")
+        settings = [f"DenyUsers {','.join(ip_blacklist)}"]
+        apply_ssh_settings(settings)
 
     elif choice == '4':
-        view_blocked_ips()
+        print("Lista de IPs não permitidos:")
+        ssh_config = view_ssh_config()
+        print("\n".join(line for line in ssh_config.split("\n") if "DenyUsers" in line))
 
     elif choice == '5':
-        ip_to_unblock = input("Digite o IP a ser desbloqueado: ")
-        unblock_ip(ip_to_unblock)
+        port = input("Digite a porta desejada (ou 'q' para sair): ")
+        if port.lower() != 'q':
+            settings = [f"Port {port}"]
+            apply_ssh_settings(settings)
 
     elif choice == '6':
-        ip = input("Digite o IP de destino: ")
-        source_port = input("Digite a porta de origem: ")
-        dest_port = input("Digite a porta de destino: ")
-        configure_port_forwarding(ip, int(source_port), int(dest_port))
+        alerts = input("Digite uma configuração de alerta: ")
+        settings = [f"# Alert: {alerts}"]
+        apply_ssh_settings(settings)
 
     elif choice == '7':
-        generate_example_alert()
+        settings = ["LogLevel VERBOSE", "PrintLastLog yes"]
+        apply_ssh_settings(settings)
 
     elif choice == '8':
+        print("Configurações SSH:")
+        ssh_config = view_ssh_config()
+        print(ssh_config)
+
+    elif choice == '9':
+        start_ssh_service()
+
+    elif choice == '10':
+        restart_ssh_service()
+
+    elif choice == '11':
+        stop_ssh_service()
+
+    elif choice == '0':
         print("Encerrando o programa.")
         break
 
