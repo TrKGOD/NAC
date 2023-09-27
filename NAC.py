@@ -58,15 +58,6 @@ def generate_example_alert():
     
     current_time = datetime.datetime.now()
     
-    print("""
-     _   _ _____ _     _     
-    | \ | |  ___| |   (_)    
-    |  \| | |__ | |__  _ ___ 
-    | . ` |  __|| '_ \| / __|
-    | |\  | |___| | | | \__ \\
-    \_| \_|____/\_| |_|_|___/
-    """)
-    
     print("Alerta de Exemplo:")
     print(f"Horário: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"IP: {example_ip}")
